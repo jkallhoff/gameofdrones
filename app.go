@@ -1,7 +1,8 @@
 package main
 
 import "fmt"
-import "os"
+
+//import "os"
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -18,15 +19,17 @@ func main() {
 
 	game := SetupGame(P, ID, D, Z)
 
-	fmt.Fprintf(os.Stderr, "%s", game.Me())
-
 	for {
 		game.LoadRound()
 
-		firstZone := game.Zones[0]
+		counter := 0
+		for _, d := range game.Me().Drones {
+			if counter >= Z {
+				counter = 0
+			}
 
-		for _, _ = range game.Me().Drones {
-			fmt.Printf("%d %d\n", firstZone.Center.X, firstZone.Center.Y)
+			d.MoveTo(game.Zones[counter].Center)
+			counter++
 		}
 	}
 }
@@ -48,10 +51,18 @@ type Drone struct {
 	Location *Point
 }
 
+func (drone *Drone) MoveTo(point *Point) {
+	fmt.Printf("%d %d\n", point.X, point.Y)
+}
+
 type Drones []*Drone
 
 type Player struct {
 	Drones Drones
+}
+
+func (player *Player) SendNextDroneTo(point *Point) {
+	fmt.Printf("%d %d\n", point.X, point.Y)
 }
 
 type Players []*Player
@@ -60,6 +71,7 @@ type Game struct {
 	Players Players //The collection of players in the game.
 	Zones   Zones
 	MeId    int
+	Init    bool
 }
 
 func (game *Game) Me() *Player {
@@ -71,6 +83,7 @@ func SetupGame(p, id, d, z int) *Game {
 	game.Players = make(Players, p, p)
 	game.Zones = make(Zones, z, z)
 	game.MeId = id
+	game.Init = true
 
 	for i := 0; i < z; i++ {
 		// X: corresponds to the position of the center of a zone. A zone is a circle with a radius of 100 units.
