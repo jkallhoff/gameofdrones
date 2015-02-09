@@ -1,8 +1,11 @@
 package main
 
 import "fmt"
+import "math"
+import "sort"
 
 //import "os"
+//fmt.Fprintf(os.Stderr, "Distance: %d, CLOSEST: %d\n",distance, closestDistance)
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -22,41 +25,100 @@ func main() {
 	for {
 		game.LoadRound()
 
-		counter := 0
-		for _, d := range game.Me().Drones {
-			if counter >= Z {
-				counter = 0
+		for _, drone := range game.Me().Drones {
+			closestZones := drone.ClosestZones(game.Zones)
+
+			if drone.TargetZone == nil {
+				drone.TargetZone = closestZones[0].Zone
+				drone.Move()
 			}
 
-			d.MoveTo(game.Zones[counter].Center)
-			counter++
+			if drone.TargetZone != nil {
+				if drone.AtZone != true {
+					drone.Move()
+				} else {
+					drone.Move()
+
+				}
+			}
+			//closestZones := d.ClosestZones(game.Zones)
+			//d.MoveTo(closestZones[0].Zone.Center)
 		}
 	}
 }
 
-//Types
+//POINT TYPES
 type Point struct {
 	X, Y int
 }
 
+func (start *Point) DistanceTo(end *Point) float64 {
+	xpower := (end.X - start.X) * (end.X - start.X)
+	ypower := (end.Y - start.Y) * (end.Y - start.Y)
+	preSquare := xpower + ypower
+
+	return math.Sqrt(float64(preSquare))
+}
+
+//ZONE TYPES
 type Zone struct {
 	Center        *Point
 	ControllerId  int
 	MaxEnemyShips int
 }
 
-type Zones []*Zone
+type ZoneDistance struct {
+	Zone     *Zone
+	Distance float64
+}
 
+type Zones []*Zone
+type ZoneDistances []ZoneDistance
+
+func (a ZoneDistances) Len() int           { return len(a) }
+func (a ZoneDistances) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ZoneDistances) Less(i, j int) bool { return a[i].Distance < a[j].Distance }
+
+//DRONE TYPES
 type Drone struct {
-	Location *Point
+	Location   *Point
+	TargetZone *Zone
+	AtZone     bool
+}
+
+func (drone *Drone) Move() {
+	fmt.Printf("%d %d\n", drone.TargetZone.Center.X, drone.TargetZone.Center.Y)
 }
 
 func (drone *Drone) MoveTo(point *Point) {
 	fmt.Printf("%d %d\n", point.X, point.Y)
 }
 
+func (drone *Drone) ClosestZones(zones Zones) ZoneDistances {
+	returnDistances := make(ZoneDistances, len(zones), len(zones))
+
+	for i, z := range zones {
+		distance := drone.Location.DistanceTo(z.Center)
+		zoneDistance := ZoneDistance{Zone: z, Distance: distance}
+		returnDistances[i] = zoneDistance
+	}
+
+	sort.Sort(returnDistances)
+
+	if drone.TargetZone != nil {
+		if returnDistances[0].Zone == drone.TargetZone && returnDistances[0].Distance <= 99 {
+			drone.AtZone = true
+		} else {
+			drone.AtZone = false
+		}
+	}
+
+	return returnDistances
+}
+
 type Drones []*Drone
 
+//PLAYER TYPES
 type Player struct {
 	Drones Drones
 }
@@ -67,6 +129,7 @@ func (player *Player) SendNextDroneTo(point *Point) {
 
 type Players []*Player
 
+//GAME TYPES
 type Game struct {
 	Players Players //The collection of players in the game.
 	Zones   Zones
@@ -78,6 +141,7 @@ func (game *Game) Me() *Player {
 	return game.Players[game.MeId]
 }
 
+//SYSTEM FUNCTIONS
 func SetupGame(p, id, d, z int) *Game {
 	game := new(Game)
 	game.Players = make(Players, p, p)
@@ -118,7 +182,7 @@ func (game *Game) LoadRound() {
 
 	for _, pv := range game.Players {
 		for _, dv := range pv.Drones {
-			fmt.Scan(dv.Location.X, dv.Location.Y)
+			fmt.Scan(&dv.Location.X, &dv.Location.Y)
 		}
 	}
 }
